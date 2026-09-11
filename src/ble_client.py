@@ -1,4 +1,3 @@
-import asyncio
 from bleak import BleakClient, BleakScanner
 from utils.logger import get_logger
 
@@ -15,51 +14,62 @@ class BLEClient:
         self.device = None
         self.client = None
 
-    async def discover(self):
-        """Discover the ESP32 BLE device."""
+    async def discover(self, retries=3, timeout=10):
+        """Discover the target BLE device with retry support."""
 
-        self.logger.info(
-            "Scanning for BLE device: %s",
-            self.device_name
-        )
-
-        devices = await BleakScanner.discover(timeout=10)
-
-        for device in devices:
-
+        for attempt in range(1, retries + 1):
             self.logger.info(
-                "Discovered device: %s",
-                device.name
+                "BLE discovery attempt %d/%d for device: %s",
+                attempt,
+                retries,
+                self.device_name,
             )
 
-            if device.name == self.device_name:
-                self.device = device
+            devices = await BleakScanner.discover(timeout=timeout)
 
+            for device in devices:
                 self.logger.info(
-                    "Target device found: %s",
-                    device.name
+                    "Discovered device: %s",
+                    device.name,
                 )
 
-                return device
+                if device.name == self.device_name:
+                    self.device = device
+
+                    self.logger.info(
+                        "Target device found: %s",
+                        device.name,
+                    )
+
+                    return device
+
+            self.logger.warning(
+                "BLE device '%s' was not found on attempt %d/%d",
+                self.device_name,
+                attempt,
+                retries,
+            )
 
         self.logger.error(
-            "BLE device '%s' was not found",
-            self.device_name
+            "BLE device '%s' was not found after %d attempts",
+            self.device_name,
+            retries,
         )
 
         raise RuntimeError(
-            f"BLE device '{self.device_name}' was not found"
+            f"BLE device '{self.device_name}' was not found "
+            f"after {retries} attempts"
         )
 
     async def connect(self):
-        """Discover and connect to the ESP32."""
+        """Discover and connect to the target BLE device."""
 
         if self.device is None:
             await self.discover()
 
         self.logger.info(
             "Connecting to %s",
-            self.device.name
+            self.device.name,
         )
 
         self.client = BleakClient(self.device)
@@ -69,7 +79,7 @@ class BLEClient:
         if not self.client.is_connected:
             self.logger.error(
                 "Failed to connect to %s",
-                self.device.name
+                self.device.name,
             )
 
             raise RuntimeError(
@@ -78,19 +88,18 @@ class BLEClient:
 
         self.logger.info(
             "Successfully connected to %s",
-            self.device.name
+            self.device.name,
         )
 
         return True
 
     async def disconnect(self):
-        """Disconnect from the ESP32."""
+        """Disconnect from the BLE device."""
 
         if self.client and self.client.is_connected:
-
             self.logger.info(
                 "Disconnecting from %s",
-                self.device.name
+                self.device.name,
             )
 
             await self.client.disconnect()
@@ -100,10 +109,12 @@ class BLEClient:
             )
 
     async def get_services(self):
-        """Return GATT services discovered by the device."""
+        """Return the discovered GATT services."""
 
         if not self.client or not self.client.is_connected:
-            raise RuntimeError("BLE client is not connected")
+            raise RuntimeError(
+                "BLE client is not connected"
+            )
 
         return self.client.services
 
@@ -121,7 +132,7 @@ class BLEClient:
 
         self.logger.info(
             "Reading characteristic: %s",
-            characteristic_uuid
+            characteristic_uuid,
         )
 
         data = await self.client.read_gatt_char(
@@ -130,16 +141,16 @@ class BLEClient:
 
         self.logger.info(
             "Read successful: %s",
-            data
+            data,
         )
 
         return data
 
     async def write_characteristic(
-    self,
-    characteristic_uuid,
-    value
-):
+        self,
+        characteristic_uuid,
+        value,
+    ):
         """Write data to a BLE characteristic."""
 
         if not self.client or not self.client.is_connected:
@@ -154,14 +165,14 @@ class BLEClient:
         self.logger.info(
             "Writing to characteristic %s: %s",
             characteristic_uuid,
-            value
+            value,
         )
 
         await self.client.write_gatt_char(
             characteristic_uuid,
-            value
+            value,
         )
 
         self.logger.info(
-            "Write successful"
+            "Write successful",
         )
