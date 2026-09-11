@@ -4,7 +4,7 @@ from bleak import BleakScanner
 
 DEVICE_NAME = "ESP32-BLE-Test"
 
-
+@pytest.mark.hardware
 @pytest.mark.asyncio
 async def test_esp32_is_discoverable():
     devices = await BleakScanner.discover(timeout=10)

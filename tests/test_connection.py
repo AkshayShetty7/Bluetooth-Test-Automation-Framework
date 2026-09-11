@@ -3,9 +3,9 @@ import pytest
 from src.ble_client import BLEClient
 
 
+@pytest.mark.hardware
 @pytest.mark.asyncio
 async def test_esp32_connection():
-
     client = BLEClient()
 
     try:
