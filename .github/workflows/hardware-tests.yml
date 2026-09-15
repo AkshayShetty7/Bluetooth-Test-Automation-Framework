@@ -1,0 +1,35 @@
+name: BLE Hardware Tests
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  hardware-test:
+    runs-on: [self-hosted, Linux, X64, ble-hardware]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run BLE hardware tests
+        run: |
+          python -m pytest -m hardware -v --junitxml=hardware-test-results.xml
+
+      - name: Upload hardware test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ble-hardware-test-results
+          path: hardware-test-results.xml
