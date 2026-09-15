@@ -74,25 +74,47 @@ class BLEClient:
 
         self.client = BleakClient(self.device)
 
-        await self.client.connect()
+        max_attempts = 3
 
-        if not self.client.is_connected:
-            self.logger.error(
-                "Failed to connect to %s",
-                self.device.name,
-            )
+        for attempt in range(1, max_attempts + 1):
+            try:
+                self.logger.info(
+                    "BLE connection attempt %d/%d",
+                    attempt,
+                    max_attempts,
+                )
 
-            raise RuntimeError(
-                "Failed to connect to ESP32"
-            )
+                await self.client.connect()
 
-        self.logger.info(
-            "Successfully connected to %s",
+                if self.client.is_connected:
+                    self.logger.info(
+                        "Successfully connected to %s",
+                        self.device.name,
+                    )
+                    return True
+
+            except Exception as exc:
+                self.logger.warning(
+                    "BLE connection attempt %d/%d failed: %s",
+                    attempt,
+                    max_attempts,
+                    exc,
+                )
+
+                if attempt == max_attempts:
+                    raise
+
+        self.logger.error(
+            "Failed to connect to %s after %d attempts",
             self.device.name,
+            max_attempts,
         )
 
-        return True
+        raise RuntimeError(
+            "Failed to connect to ESP32"
+        )
 
+    
     async def disconnect(self):
         """Disconnect from the BLE device."""
 
